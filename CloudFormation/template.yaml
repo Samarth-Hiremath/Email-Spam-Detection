@@ -10,16 +10,13 @@ Resources:
   SESRule:
     Type: 'AWS::SES::ReceiptRule'
     DependsOn:
-      - SampleBucketPolicy
+      - S3BucketPolicy
     Properties:
       Rule:
         Actions:
           - S3Action:
               BucketName: !Ref S3Bucket
       RuleSetName: RuleSet1
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 8c9e7f90-83b6-43c5-a312-5774f02f2d22
   SESRuleSet:
     Type: 'AWS::SES::ReceiptRuleSet'
     Properties:
@@ -35,7 +32,7 @@ Resources:
         LambdaConfigurations:
           - Event: 's3:ObjectCreated:Put'
             Function: !GetAtt LambdaFunction.Arn
-  SampleBucketPolicy: 
+  S3BucketPolicy: 
     Type: AWS::S3::BucketPolicy
     Properties: 
       Bucket: 
@@ -57,9 +54,11 @@ Resources:
             Principal: "*"
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
+    DependsOn:
+      - LambdaIamRole
     Properties:
       Handler: lambda_function.lambda_handler
-      Role: 'arn:aws:iam::821517424076:role/service-role/spam-detector-role-ir7rp68u'
+      Role:  !GetAtt LambdaIamRole.Arn
       Code:
         S3Bucket: lambda-function-code-final
         S3Key: function.zip
@@ -86,3 +85,22 @@ Resources:
             - "arn:aws:s3:::"
             - 
               Ref: "S3BucketName"
+  LambdaIamRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: lambda-role-email-spam
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
