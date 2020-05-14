@@ -1,0 +1,88 @@
+Parameters:
+  EndpointName:
+    Type: String
+    Description: Enter the endpoint of Sagemaker model.
+  S3BucketName:
+    Type: String
+    Default: myemailbucket1
+    Description: Enter the bucketname to store emails.
+Resources:
+  SESRule:
+    Type: 'AWS::SES::ReceiptRule'
+    DependsOn:
+      - SampleBucketPolicy
+    Properties:
+      Rule:
+        Actions:
+          - S3Action:
+              BucketName: !Ref S3Bucket
+      RuleSetName: RuleSet1
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 8c9e7f90-83b6-43c5-a312-5774f02f2d22
+  SESRuleSet:
+    Type: 'AWS::SES::ReceiptRuleSet'
+    Properties:
+      RuleSetName: RuleSet1
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    DependsOn: 
+      - LambdaFunction
+      - LambdaS3Permission 
+    Properties:
+      BucketName: !Ref S3BucketName
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:Put'
+            Function: !GetAtt LambdaFunction.Arn
+  SampleBucketPolicy: 
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: 
+        Ref: "S3Bucket"
+      PolicyDocument: 
+        Statement: 
+          - 
+            Action: 
+              - "s3:PutObject"
+            Effect: "Allow"
+            Resource: 
+              Fn::Join: 
+                - ""
+                - 
+                  - "arn:aws:s3:::"
+                  - 
+                    Ref: "S3Bucket"
+                  - "/*"
+            Principal: "*"
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: lambda_function.lambda_handler
+      Role: 'arn:aws:iam::821517424076:role/service-role/spam-detector-role-ir7rp68u'
+      Code:
+        S3Bucket: lambda-function-code-final
+        S3Key: function.zip
+      Runtime: python3.8
+      Environment:
+        Variables:
+          ENDPOINT_NAME: !Ref EndpointName
+      Timeout: 600
+      TracingConfig:
+        Mode: Active
+  LambdaS3Permission:
+    Type: AWS::Lambda::Permission
+    DependsOn: 
+      - LambdaFunction
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn:
+        Fn::Join: 
+          - ""
+          - 
+            - "arn:aws:s3:::"
+            - 
+              Ref: "S3BucketName"
