@@ -1,2 +1,3 @@
 # Email-Spam-Detection
-Email spam detection using AWS Sagemaker
+
+Implemented a machine learning model on AWS SageMaker to classify a email as spam or not. Email Forwarding rules written in Amazon SES allow us to redirect and store every incoming email to a S3 bucket. Then, with the help of a Lambda function we invoke the machine learning model for every incoming mail. Once the mail is classified, we send a report to the recipient of the original mail.
